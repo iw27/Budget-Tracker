@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Budget Tracker</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #111827;
+      --muted: #94a3b8;
+      --text: #e5e7eb;
+      --accent: #4f46e5;
+      --bad: #ef4444;
+      --good: #22c55e;
+      --warn: #f59e0b;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); }
+    .container { max-width: 980px; margin: 0 auto; padding: 24px; }
+    header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .brand { font-weight: 700; letter-spacing: .3px; }
+    .card { background: var(--card); border-radius: 16px; padding: 16px; box-shadow: 0 4px 18px rgba(0,0,0,.25); }
+    .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+    .col-4 { grid-column: span 4; }
+    .col-6 { grid-column: span 6; }
+    .col-8 { grid-column: span 8; }
+    .col-12 { grid-column: span 12; }
+    @media (max-width: 800px) {
+      .col-4, .col-6, .col-8 { grid-column: span 12; }
+    }
+    label { display:block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    input[type="number"], select, input[type="month"], input[type="text"] {
+      width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid #1f2937; background: #0b1220; color: var(--text);
+    }
+    button { padding: 10px 14px; border: 0; border-radius: 10px; background: var(--accent); color: white; font-weight: 600; cursor: pointer; }
+    button.secondary { background: #334155; }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+    .section-title { font-size: 14px; color: var(--muted); margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: .12em; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .right { margin-left: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px 8px; border-bottom: 1px solid #1f2937; text-align: left; font-size: 14px; }
+    .pill { display:inline-flex; align-items:center; gap:8px; padding:4px 10px; background:#1f2937; border-radius:999px; font-size:12px; color:var(--muted); }
+    .progress { height: 10px; background: #1f2937; border-radius: 999px; overflow: hidden; }
+    .bar { height: 100%; width: 0%; background: var(--good); transition: width .3s; }
+    .bar.warn { background: var(--warn); }
+    .bar.bad { background: var(--bad); }
+    .muted { color: var(--muted); }
+    .hidden { display: none !important; }
+    .notice { font-size: 13px; color: var(--muted); }
+    .limit { font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">💸 Budget Tracker</div>
+      <div class="row">
+        <button id="exportCsvBtn" class="secondary">Export CSV</button>
+        <button id="signOutBtn" class="secondary">Sign out</button>
+      </div>
+    </header>
+
+    <!-- AUTH SCREEN -->
+    <div id="authScreen" class="card col-12">
+      <h2>Sign in</h2>
+      <p class="notice">Sign in with Google to save your data securely and access it on any device.</p>
+      <button id="googleSignInBtn">Continue with Google</button>
+    </div>
+
+    <!-- APP SCREEN -->
+    <div id="appScreen" class="hidden">
+      <div class="grid">
+        <div class="col-12 card">
+          <div class="row">
+            <div>
+              <div class="section-title">Month</div>
+              <input type="month" id="monthPicker" />
+            </div>
+            <div class="right">
+              <div class="pill"><span>Limits:</span>
+                <span>Extra Spending <span class="limit" id="limit-extra"></span></span> • 
+                <span>Groceries <span class="limit" id="limit-groceries"></span></span> • 
+                <span>Restaurants <span class="limit" id="limit-restaurants"></span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-4 card">
+          <div class="section-title">Extra Spending</div>
+          <div class="progress"><div id="bar-extra" class="bar"></div></div>
+          <div class="row" style="margin-top:8px">
+            <div id="sum-extra" class="limit">$0</div>
+            <div class="muted">of</div>
+            <div id="limit-extra-2" class="muted">$0</div>
+            <div class="right muted" id="remain-extra"></div>
+          </div>
+        </div>
+        <div class="col-4 card">
+          <div class="section-title">Groceries</div>
+          <div class="progress"><div id="bar-groceries" class="bar"></div></div>
+          <div class="row" style="margin-top:8px">
+            <div id="sum-groceries" class="limit">$0</div>
+            <div class="muted">of</div>
+            <div id="limit-groceries-2" class="muted">$0</div>
+            <div class="right muted" id="remain-groceries"></div>
+          </div>
+        </div>
+        <div class="col-4 card">
+          <div class="section-title">Restaurants</div>
+          <div class="progress"><div id="bar-restaurants" class="bar"></div></div>
+          <div class="row" style="margin-top:8px">
+            <div id="sum-restaurants" class="limit">$0</div>
+            <div class="muted">of</div>
+            <div id="limit-restaurants-2" class="muted">$0</div>
+            <div class="right muted" id="remain-restaurants"></div>
+          </div>
+        </div>
+
+        <div class="col-12 card">
+          <div class="section-title">Add Transaction</div>
+          <div class="grid">
+            <div class="col-4">
+              <label>Amount</label>
+              <input type="number" id="amountInput" placeholder="e.g. 42.50" step="0.01" min="0" />
+            </div>
+            <div class="col-4">
+              <label>Category</label>
+              <select id="categorySelect">
+                <option value="">Choose…</option>
+                <option>Extra Spending</option>
+                <option>Groceries</option>
+                <option>Restaurants</option>
+              </select>
+            </div>
+            <div class="col-4">
+              <label>Note (optional)</label>
+              <input type="text" id="noteInput" maxlength="80" placeholder="description" />
+            </div>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <button id="addBtn">Confirm</button>
+            <div id="status" class="notice"></div>
+          </div>
+        </div>
+
+        <div class="col-12 card">
+          <div class="row">
+            <div class="section-title">Transactions</div>
+          </div>
+          <table>
+            <thead>
+              <tr><th>Date</th><th>Amount</th><th>Category</th><th>Note</th></tr>
+            </thead>
+            <tbody id="txTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    /***** 1) EDIT YOUR LIMITS HERE *****/
+    const CATEGORY_LIMITS = {
+      "Extra Spending": 600,
+      "Groceries": 1200,
+      "Restaurants": 300,
+    };
+
+    /***** 2) PASTE YOUR FIREBASE CONFIG BELOW *****
+     * Replace the firebaseConfig object with values from
+     * Firebase Console → Project settings → Your apps → Web app.
+     */
+    const firebaseConfig = {
+      apiKey: "PASTE_API_KEY",
+      authDomain: "PASTE_AUTH_DOMAIN",
+      projectId: "PASTE_PROJECT_ID",
+      storageBucket: "PASTE_STORAGE_BUCKET",
+      messagingSenderId: "PASTE_SENDER_ID",
+      appId: "PASTE_APP_ID"
+    };
+
+    /***** 3) FIREBASE SDK IMPORTS *****/
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+    import { getFirestore, collection, addDoc, query, where, orderBy, getDocs, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+
+    // Init
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // UI refs
+    const authScreen = document.getElementById("authScreen");
+    const appScreen = document.getElementById("appScreen");
+    const googleBtn = document.getElementById("googleSignInBtn");
+    const signOutBtn = document.getElementById("signOutBtn");
+    const addBtn = document.getElementById("addBtn");
+    const amountInput = document.getElementById("amountInput");
+    const categorySelect = document.getElementById("categorySelect");
+    const noteInput = document.getElementById("noteInput");
+    const txTableBody = document.getElementById("txTableBody");
+    const monthPicker = document.getElementById("monthPicker");
+    const status = document.getElementById("status");
+    const exportCsvBtn = document.getElementById("exportCsvBtn");
+
+    // Limits UI
+    function fmtMoney(n){ return "$" + (Number(n)||0).toFixed(2); }
+    document.getElementById("limit-extra").textContent = fmtMoney(CATEGORY_LIMITS["Extra Spending"]);
+    document.getElementById("limit-groceries").textContent = fmtMoney(CATEGORY_LIMITS["Groceries"]);
+    document.getElementById("limit-restaurants").textContent = fmtMoney(CATEGORY_LIMITS["Restaurants"]);
+    document.getElementById("limit-extra-2").textContent = fmtMoney(CATEGORY_LIMITS["Extra Spending"]);
+    document.getElementById("limit-groceries-2").textContent = fmtMoney(CATEGORY_LIMITS["Groceries"]);
+    document.getElementById("limit-restaurants-2").textContent = fmtMoney(CATEGORY_LIMITS["Restaurants"]);
+
+    const bars = {
+      "Extra Spending": document.getElementById("bar-extra"),
+      "Groceries": document.getElementById("bar-groceries"),
+      "Restaurants": document.getElementById("bar-restaurants"),
+    };
+    const sums = {
+      "Extra Spending": document.getElementById("sum-extra"),
+      "Groceries": document.getElementById("sum-groceries"),
+      "Restaurants": document.getElementById("sum-restaurants"),
+    };
+    const remains = {
+      "Extra Spending": document.getElementById("remain-extra"),
+      "Groceries": document.getElementById("remain-groceries"),
+      "Restaurants": document.getElementById("remain-restaurants"),
+    };
+
+    // Month picker default to current month
+    const now = new Date();
+    const ym = now.toISOString().slice(0,7);
+    monthPicker.value = ym;
+
+    function monthRange(yyyyMm){
+      // yyyyMm like "2025-08"
+      const [y,m] = yyyyMm.split("-").map(Number);
+      const start = new Date(y, m-1, 1, 0,0,0,0);
+      const end = new Date(y, m, 0, 23,59,59,999); // last day of month
+      return { start, end };
+    }
+
+    // Auth
+    googleBtn.addEventListener("click", async ()=>{
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+    });
+
+    signOutBtn.addEventListener("click", ()=> signOut(auth));
+
+    onAuthStateChanged(auth, async (user)=>{
+      if (user){
+        authScreen.classList.add("hidden");
+        appScreen.classList.remove("hidden");
+        await loadMonth();
+      } else {
+        appScreen.classList.add("hidden");
+        authScreen.classList.remove("hidden");
+      }
+    });
+
+    // Add transaction
+    addBtn.addEventListener("click", async ()=>{
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const amount = parseFloat(amountInput.value);
+      const category = categorySelect.value;
+      const note = noteInput.value.trim();
+
+      if (!amount || amount <= 0 || !category){
+        status.textContent = "Enter a positive amount and choose a category.";
+        return;
+      }
+      addBtn.disabled = true;
+      status.textContent = "Saving…";
+      try {
+        const colRef = collection(db, `users/${user.uid}/transactions`);
+        await addDoc(colRef, {
+          amount: amount,
+          category: category,
+          note: note || null,
+          createdAt: serverTimestamp()
+        });
+        amountInput.value = "";
+        categorySelect.value = "";
+        noteInput.value = "";
+        status.textContent = "Saved!";
+        await loadMonth();
+        setTimeout(()=> status.textContent="", 1200);
+      } catch (e){
+        console.error(e);
+        status.textContent = "Error: " + e.message;
+      } finally {
+        addBtn.disabled = false;
+      }
+    });
+
+    // Load month data
+    monthPicker.addEventListener("change", ()=> loadMonth());
+
+    async function loadMonth(){
+      const user = auth.currentUser;
+      if (!user) return;
+      const { start, end } = monthRange(monthPicker.value);
+      const startTs = Timestamp.fromDate(start);
+      const endTs = Timestamp.fromDate(end);
+
+      const colRef = collection(db, `users/${user.uid}/transactions`);
+      const q = query(colRef,
+        where("createdAt", ">=", startTs),
+        where("createdAt", "<=", endTs),
+        orderBy("createdAt", "desc")
+      );
+      const snap = await getDocs(q);
+      const rows = [];
+      const sumsByCat = {"Extra Spending":0, "Groceries":0, "Restaurants":0};
+      snap.forEach(d=>{
+        const data = d.data();
+        const date = data.createdAt?.toDate ? data.createdAt.toDate() : new Date();
+        const amount = Number(data.amount)||0;
+        const cat = data.category||"";
+        const note = data.note||"";
+        rows.push({date, amount, cat, note});
+        if (sumsByCat[cat] !== undefined) sumsByCat[cat] += amount;
+      });
+
+      // Render table
+      txTableBody.innerHTML = rows.map(r=>{
+        const ds = r.date.toLocaleDateString();
+        return `<tr><td>${ds}</td><td>${fmtMoney(r.amount)}</td><td>${r.cat}</td><td>${r.note||""}</td></tr>`;
+      }).join("");
+
+      // Render bars/totals
+      for (const cat of Object.keys(CATEGORY_LIMITS)){
+        const spent = sumsByCat[cat] || 0;
+        const limit = CATEGORY_LIMITS[cat];
+        const pct = Math.min(100, Math.round((spent/limit)*100));
+        const bar = bars[cat];
+        bar.style.width = `${pct}%`;
+        bar.classList.remove("warn","bad");
+        if (spent/limit >= 1) bar.classList.add("bad");
+        else if (spent/limit >= 0.8) bar.classList.add("warn");
+        sums[cat].textContent = fmtMoney(spent);
+        const remain = limit - spent;
+        remains[cat].textContent = remain >= 0 ? `${fmtMoney(remain)} left` : `${fmtMoney(Math.abs(remain))} over`;
+      }
+    }
+
+    // Export CSV
+    exportCsvBtn.addEventListener("click", ()=> downloadCsv());
+
+    async function downloadCsv(){
+      const user = auth.currentUser;
+      if (!user) return;
+      const { start, end } = monthRange(monthPicker.value);
+      const startTs = Timestamp.fromDate(start);
+      const endTs = Timestamp.fromDate(end);
+
+      const colRef = collection(db, `users/${user.uid}/transactions`);
+      const q = query(colRef,
+        where("createdAt", ">=", startTs),
+        where("createdAt", "<=", endTs),
+        orderBy("createdAt", "desc")
+      );
+      const snap = await getDocs(q);
+
+      const rows = [["Date","Amount","Category","Note"]];
+      snap.forEach(d=>{
+        const data = d.data();
+        const date = data.createdAt?.toDate ? data.createdAt.toDate() : new Date();
+        rows.push([date.toISOString(), Number(data.amount)||0, data.category||"", (data.note||"").replace(/"/g,'""')]);
+      });
+      const csv = rows.map(r=> r.map(v=> typeof v==="string" ? fCsv(v) : v).join(",")).join("\n");
+      const blob = new Blob([csv], {type:"text/csv"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `budget-${monthPicker.value}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(()=> URL.revokeObjectURL(url), 1000);
+
+      function fCsv(s){ return `"${s}"`; }
+    }
+  </script>
+</body>
+</html>
